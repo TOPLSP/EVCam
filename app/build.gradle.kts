@@ -90,24 +90,31 @@ android {
 }
 
 dependencies {
+    // AndroidX 基础库（使用 libs.versions.toml 管理）
     implementation(libs.appcompat)
     implementation(libs.material)
     implementation(libs.activity)
     implementation(libs.constraintlayout)
     implementation(libs.recyclerview)
     implementation(libs.cardview)
+    implementation(libs.core.ktx)
     
-    // 关键：添加 core 库（FileProvider 和 Multidex 需要）
-    implementation("androidx.core:core:1.12.0")
+    // Android 5.0 适配关键库（使用 libs.versions.toml 管理）
+    implementation(libs.multidex)
+    implementation(libs.workmanager)
+    implementation(libs.lifecycle.runtime)
+    
+    // Java 8+ 脱糖支持（使用 libs.versions.toml 管理）
+    coreLibraryDesugaring(libs.desugar.jdk.libs)
 
     // 钉钉官方 Stream SDK
     implementation("com.dingtalk.open:app-stream-client:1.3.12")
 
-    // 网络请求和 WebSocket - 降级到 3.12.13 确保 API 21 兼容
+    // 网络请求 - 降级到 3.12.13 确保 API 21 兼容
     implementation("com.squareup.okhttp3:okhttp:3.12.13")
     implementation("com.squareup.okhttp3:logging-interceptor:3.12.13")
-    // 如需 WebSocket 支持
-    implementation("com.squareup.okhttp3:okhttp-ws:3.12.13")
+    // 如需 WebSocket 支持（3.12.x 版本使用 okio 实现，不需要单独引入 okhttp-ws）
+    // implementation("com.squareup.okhttp3:okhttp-ws:3.12.13") // 已废弃，无需引入
 
     // JSON 解析
     implementation("com.google.code.gson:gson:2.10.1")
@@ -119,22 +126,14 @@ dependencies {
     implementation("com.github.bumptech.glide:glide:4.16.0")
     annotationProcessor("com.github.bumptech.glide:compiler:4.16.0")
 
-    // WorkManager 定时任务 - 升级到稳定版本
-    implementation("androidx.work:work-runtime:2.8.1")
-
-    // Multidex 支持（API 21必需）
-    implementation("androidx.multidex:multidex:2.0.1")
-    
-    // 生命周期支持（车机保活）
+    // 生命周期支持（车机保活）- 注意：与 libs.lifecycle.runtime 重复，选择保留一个
     implementation("androidx.lifecycle:lifecycle-service:2.6.2")
     implementation("androidx.lifecycle:lifecycle-process:2.6.2")
     
     // 本地广播支持
     implementation("androidx.localbroadcastmanager:localbroadcastmanager:1.1.0")
-    
-    // 关键：Java 8+ API 脱糖支持（让 API 21 支持 Java 8 特性）
-    coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.0.4")
 
+    // 测试库
     testImplementation(libs.junit)
     androidTestImplementation(libs.ext.junit)
     androidTestImplementation(libs.espresso.core)

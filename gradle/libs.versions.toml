@@ -1,5 +1,5 @@
 [versions]
-# AGP 8.1.0 是最后一个支持 Java 8 且稳定兼容低版本 Android 的版本
+# AGP 8.1.4 是最后一个支持 Java 8 且稳定兼容低版本 Android 的版本
 agp = "8.1.4"
 # Kotlin 版本（如果需要）
 kotlin = "1.9.22"
@@ -21,12 +21,17 @@ workmanager = "2.8.1"
 # 核心库
 coreKtx = "1.12.0"
 lifecycle = "2.7.0"
+# Java 8+ 脱糖库版本
+desugar = "2.0.4"
 
 [libraries]
 # 基础测试
 junit = { group = "junit", name = "junit", version.ref = "junit" }
 ext-junit = { group = "androidx.test.ext", name = "junit", version.ref = "junitVersion" }
 espresso-core = { group = "androidx.test.espresso", name = "espresso-core", version.ref = "espressoCore" }
+
+# Java 8+ 脱糖库（让 API 21 支持 Java 8 特性）
+desugar-jdk-libs = { group = "com.android.tools", name = "desugar_jdk_libs", version.ref = "desugar" }
 
 # AndroidX UI
 appcompat = { group = "androidx.appcompat", name = "appcompat", version.ref = "appcompat" }

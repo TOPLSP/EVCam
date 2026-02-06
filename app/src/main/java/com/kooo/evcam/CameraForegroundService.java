@@ -1,6 +1,5 @@
 package com.kooo.evcam;
 
-
 import com.kooo.evcam.AppLog;
 import com.kooo.evcam.camera.MultiCameraManager;
 // import android.app.AlarmManager;  // 已移除，使用 TIME_TICK 替代
@@ -339,7 +338,7 @@ public class CameraForegroundService extends Service {
     }
 
     /**
-     * 创建通知
+     * 创建通知（兼容 Android 5.0 - Android 14）
      */
     private Notification createNotification(String title, String content) {
         Intent notificationIntent = new Intent(this, MainActivity.class);
@@ -350,7 +349,18 @@ public class CameraForegroundService extends Service {
                 PendingIntent.FLAG_IMMUTABLE
         );
 
-        return new NotificationCompat.Builder(this, CHANNEL_ID)
+        // Android 5.0 - 7.1 使用 NotificationCompat.Builder(Context)
+        // Android 8.0+ 使用 NotificationCompat.Builder(Context, channelId)
+        NotificationCompat.Builder builder;
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            // Android 8.0+ 需要指定通知渠道
+            builder = new NotificationCompat.Builder(this, CHANNEL_ID);
+        } else {
+            // Android 5.0 - 7.1 不需要通知渠道
+            builder = new NotificationCompat.Builder(this);
+        }
+
+        return builder
                 .setContentTitle(title)
                 .setContentText(content)
                 .setSmallIcon(R.drawable.ic_launcher_foreground)

@@ -18,20 +18,24 @@ android {
 
     defaultConfig {
         applicationId = "com.kooo.evcam"
-        minSdk 21  // 修改为 Android 5.0
+        minSdk = 21
         targetSdk = 34
         versionCode = 19
         versionName = "1.0.6"
 
         // 启用 multidex 支持（API 21需要）
-        multiDexEnabled true
+        multiDexEnabled = true
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+        
+        // 限制ABI，提高车机兼容性
+        ndk {
+            abiFilters += listOf("armeabi-v7a", "arm64-v8a")
+        }
     }
 
     buildTypes {
         release {
-            // 使用签名配置
             signingConfig = signingConfigs.getByName("release")
             isMinifyEnabled = false
             proguardFiles(
@@ -39,10 +43,36 @@ android {
                 "proguard-rules.pro"
             )
         }
+        debug {
+            isDebuggable = true
+        }
     }
+    
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_1_8
         targetCompatibility = JavaVersion.VERSION_1_8
+    }
+
+    buildFeatures {
+        viewBinding = true
+        buildConfig = true
+    }
+    
+    packagingOptions {
+        resources {
+            excludes += listOf(
+                "META-INF/DEPENDENCIES",
+                "META-INF/LICENSE",
+                "META-INF/LICENSE.txt",
+                "META-INF/NOTICE",
+                "META-INF/NOTICE.txt"
+            )
+        }
+    }
+    
+    lint {
+        disable += listOf("InvalidPackage", "OldTargetApi")
+        abortOnError = false
     }
 
     sourceSets {
@@ -50,7 +80,6 @@ android {
             assets.srcDir("../assets")
         }
     }
-
 }
 
 dependencies {
@@ -64,8 +93,6 @@ dependencies {
     // 钉钉官方 Stream SDK
     implementation("com.dingtalk.open:app-stream-client:1.3.12")
 
-    // 飞书：使用轻量级 OkHttp WebSocket 实现，不再依赖官方 SDK
-
     // 网络请求和 WebSocket
     implementation("com.squareup.okhttp3:okhttp:4.12.0")
     implementation("com.squareup.okhttp3:logging-interceptor:4.12.0")
@@ -73,18 +100,25 @@ dependencies {
     // JSON 解析
     implementation("com.google.code.gson:gson:2.10.1")
 
-    // ZXing 二维码生成（微信小程序绑定）
+    // ZXing 二维码生成
     implementation("com.google.zxing:core:3.5.1")
 
-    // Glide 图片加载库（用于缓存和优化缩略图加载）
+    // Glide 图片加载库
     implementation("com.github.bumptech.glide:glide:4.16.0")
     annotationProcessor("com.github.bumptech.glide:compiler:4.16.0")
 
-    // WorkManager 定时任务（用于保活）
+    // WorkManager 定时任务（支持 API 21 的版本）
     implementation("androidx.work:work-runtime:2.7.1")
 
-    // 添加 multidex 支持
-    implementation 'androidx.multidex:multidex:2.0.1'
+    // Multidex 支持（API 21必需）
+    implementation("androidx.multidex:multidex:2.0.1")
+    
+    // 生命周期支持（车机保活）
+    implementation("androidx.lifecycle:lifecycle-service:2.6.2")
+    implementation("androidx.lifecycle:lifecycle-process:2.6.2")
+    
+    // 本地广播支持
+    implementation("androidx.localbroadcastmanager:localbroadcastmanager:1.1.0")
 
     testImplementation(libs.junit)
     androidTestImplementation(libs.ext.junit)

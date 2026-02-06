@@ -1,6 +1,5 @@
 package com.kooo.evcam;
 
-
 import com.kooo.evcam.AppLog;
 import android.Manifest;
 import android.content.Context;
@@ -70,21 +69,23 @@ public class MainActivity extends AppCompatActivity implements WechatRemoteManag
 
     // 根据Android版本动态获取需要的权限
     private String[] getRequiredPermissions() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            // Android 13+
-            return new String[]{
-                    Manifest.permission.CAMERA,
-                    Manifest.permission.RECORD_AUDIO
-            };
-        } else {
-            // Android 12及以下
-            return new String[]{
-                    Manifest.permission.CAMERA,
-                    Manifest.permission.RECORD_AUDIO,
-                    Manifest.permission.WRITE_EXTERNAL_STORAGE,
-                    Manifest.permission.READ_EXTERNAL_STORAGE
-            };
+        List<String> permissions = new ArrayList<>();
+        permissions.add(Manifest.permission.CAMERA);
+        permissions.add(Manifest.permission.RECORD_AUDIO);
+        
+        // Android 6.0+ 需要运行时权限，但 Android 5.0 也需要在 Manifest 中声明
+        // 存储权限在 Android 10+ 有变化，但 Android 5.0 需要传统存储权限
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) {
+            permissions.add(Manifest.permission.WRITE_EXTERNAL_STORAGE);
+            permissions.add(Manifest.permission.READ_EXTERNAL_STORAGE);
         }
+        
+        // FOREGROUND_SERVICE 权限在 Android 9.0+ 需要，但 Android 5.0 不需要运行时申请
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+            permissions.add(Manifest.permission.FOREGROUND_SERVICE);
+        }
+        
+        return permissions.toArray(new String[0]);
     }
 
     private AutoFitTextureView textureFront, textureBack, textureLeft, textureRight;
@@ -283,9 +284,7 @@ public class MainActivity extends AppCompatActivity implements WechatRemoteManag
 
         // 权限检查，但不立即初始化摄像头
         // 等待TextureView准备好后再初始化
-        if (!checkPermissions()) {
-            requestPermissions();
-        }
+        checkAndRequestPermissions();
 
         // 如果启用了自动启动，启动远程查看服务
         // 【优化】先检查服务是否已在 CameraForegroundService 中启动或正在启动
@@ -2240,9 +2239,41 @@ public class MainActivity extends AppCompatActivity implements WechatRemoteManag
         transaction.commit();
     }
 
+    /**
+     * 检查并申请权限（兼容 Android 5.0 - Android 14）
+     */
+    private void checkAndRequestPermissions() {
+        String[] permissions = getRequiredPermissions();
+        
+        // Android 6.0+ 需要运行时权限申请
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            if (!checkPermissions()) {
+                AppLog.d(TAG, "Requesting permissions for Android 6.0+");
+                ActivityCompat.requestPermissions(this, permissions, REQUEST_PERMISSIONS);
+            } else {
+                AppLog.d(TAG, "All permissions already granted");
+                onPermissionsGranted();
+            }
+        } else {
+            // Android 5.0 - 5.1：只需要在 Manifest 中声明权限，不需要运行时申请
+            // 但为了确保权限真的被授予，仍然检查一下
+            if (!checkPermissions()) {
+                AppLog.w(TAG, "Some permissions not granted on Android 5.x, this should not happen");
+                // 在 Android 5.x 上，如果权限被拒绝，通常是系统级别的限制，无法通过运行时申请解决
+                Toast.makeText(this, "请检查应用权限设置", Toast.LENGTH_LONG).show();
+            } else {
+                AppLog.d(TAG, "All permissions granted on Android 5.x");
+                onPermissionsGranted();
+            }
+        }
+    }
 
+    /**
+     * 检查权限是否都已授予
+     */
     private boolean checkPermissions() {
-        for (String permission : getRequiredPermissions()) {
+        String[] permissions = getRequiredPermissions();
+        for (String permission : permissions) {
             if (ContextCompat.checkSelfPermission(this, permission) != PackageManager.PERMISSION_GRANTED) {
                 AppLog.d(TAG, "Missing permission: " + permission);
                 return false;
@@ -2251,26 +2282,57 @@ public class MainActivity extends AppCompatActivity implements WechatRemoteManag
         return true;
     }
 
-    private void requestPermissions() {
-        AppLog.d(TAG, "Requesting permissions...");
-        ActivityCompat.requestPermissions(this, getRequiredPermissions(), REQUEST_PERMISSIONS);
-    }
-
+    /**
+     * 权限申请结果回调
+     */
     @Override
     public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+        
         if (requestCode == REQUEST_PERMISSIONS) {
-            if (checkPermissions()) {
-                // 权限已授予，但需要等待TextureView准备好
-                // 如果TextureView已经准备好，立即初始化摄像头
-                if (textureReadyCount >= requiredTextureCount) {
-                    initCamera();
+            boolean allGranted = true;
+            
+            for (int i = 0; i < permissions.length; i++) {
+                if (grantResults[i] != PackageManager.PERMISSION_GRANTED) {
+                    allGranted = false;
+                    AppLog.w(TAG, "Permission denied: " + permissions[i]);
                 }
+            }
+            
+            if (allGranted) {
+                AppLog.d(TAG, "All permissions granted");
+                onPermissionsGranted();
             } else {
-                Toast.makeText(this, "需要相机和存储权限", Toast.LENGTH_SHORT).show();
-                finish();
+                // 有权限被拒绝
+                AppLog.e(TAG, "Some permissions were denied");
+                Toast.makeText(this, "需要摄像头和存储权限才能使用", Toast.LENGTH_LONG).show();
+                
+                // 如果 CAMERA 或 RECORD_AUDIO 被拒绝，无法继续使用
+                boolean criticalDenied = false;
+                for (int i = 0; i < permissions.length; i++) {
+                    if (grantResults[i] != PackageManager.PERMISSION_GRANTED) {
+                        if (Manifest.permission.CAMERA.equals(permissions[i]) ||
+                            Manifest.permission.RECORD_AUDIO.equals(permissions[i])) {
+                            criticalDenied = true;
+                            break;
+                        }
+                    }
+                }
+                
+                if (criticalDenied) {
+                    finish(); // 关键权限被拒绝，退出应用
+                }
             }
         }
+    }
+
+    /**
+     * 权限授予后的处理
+     */
+    private void onPermissionsGranted() {
+        AppLog.d(TAG, "Permissions granted, ready to initialize camera");
+        // 权限已授予，等待 TextureView 准备好后初始化摄像头
+        // 初始化逻辑在 TextureView.SurfaceTextureListener 中处理
     }
 
     private void initCamera() {

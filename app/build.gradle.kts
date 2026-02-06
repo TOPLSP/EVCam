@@ -70,7 +70,6 @@ android {
                 "META-INF/NOTICE.txt"
             )
         }
-        // 关键：避免重复文件冲突
         pickFirsts += listOf(
             "lib/armeabi-v7a/libc++_shared.so",
             "lib/arm64-v8a/libc++_shared.so"
@@ -90,7 +89,7 @@ android {
 }
 
 dependencies {
-    // AndroidX 基础库（使用 libs.versions.toml 管理）
+    // AndroidX 基础库
     implementation(libs.appcompat)
     implementation(libs.material)
     implementation(libs.activity)
@@ -99,22 +98,27 @@ dependencies {
     implementation(libs.cardview)
     implementation(libs.core.ktx)
     
-    // Android 5.0 适配关键库（使用 libs.versions.toml 管理）
+    // Android 5.0 适配关键库
     implementation(libs.multidex)
     implementation(libs.workmanager)
-    implementation(libs.lifecycle.runtime)
+    // 使用 toml 中的 lifecycle-runtime，删除硬编码的重复依赖
+    // implementation(libs.lifecycle.runtime) // 如需具体版本控制可保留
     
-    // Java 8+ 脱糖支持（使用 libs.versions.toml 管理）
+    // Java 8+ 脱糖支持
     coreLibraryDesugaring(libs.desugar.jdk.libs)
+    
+    // 关键：Conscrypt 提供现代 TLS 支持（Android 5.0 必需）
+    implementation(libs.conscrypt.android)
 
-    // 钉钉官方 Stream SDK
-    implementation("com.dingtalk.open:app-stream-client:1.3.12")
+    // 钉钉官方 Stream SDK（排除冲突依赖，防止强制使用 OkHttp 4.x）
+    implementation("com.dingtalk.open:app-stream-client:1.3.12") {
+        exclude(group = "com.squareup.okhttp3")
+        exclude(group = "com.squareup.okio")
+    }
 
-    // 网络请求 - 降级到 3.12.13 确保 API 21 兼容
+    // 网络请求 - 3.12.13 是最后一个稳定支持 API 21 的版本
     implementation("com.squareup.okhttp3:okhttp:3.12.13")
     implementation("com.squareup.okhttp3:logging-interceptor:3.12.13")
-    // 如需 WebSocket 支持（3.12.x 版本使用 okio 实现，不需要单独引入 okhttp-ws）
-    // implementation("com.squareup.okhttp3:okhttp-ws:3.12.13") // 已废弃，无需引入
 
     // JSON 解析
     implementation("com.google.code.gson:gson:2.10.1")
@@ -126,7 +130,7 @@ dependencies {
     implementation("com.github.bumptech.glide:glide:4.16.0")
     annotationProcessor("com.github.bumptech.glide:compiler:4.16.0")
 
-    // 生命周期支持（车机保活）- 注意：与 libs.lifecycle.runtime 重复，选择保留一个
+    // 生命周期支持（车机保活）- 删除重复，只保留这组或 toml 中的那组
     implementation("androidx.lifecycle:lifecycle-service:2.6.2")
     implementation("androidx.lifecycle:lifecycle-process:2.6.2")
     

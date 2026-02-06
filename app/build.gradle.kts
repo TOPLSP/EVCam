@@ -4,7 +4,7 @@ plugins {
 
 android {
     namespace = "com.kooo.evcam"
-    compileSdk = 36
+    compileSdk = 34
 
     // 签名配置 (使用 AOSP 公共测试签名)
     signingConfigs {
@@ -18,11 +18,13 @@ android {
 
     defaultConfig {
         applicationId = "com.kooo.evcam"
-        minSdk = 28
-        targetSdk = 36
+        minSdk 21  // 修改为 Android 5.0
+        targetSdk = 34
         versionCode = 19
         versionName = "1.0.6"
 
+        // 启用 multidex 支持（API 21需要）
+        multiDexEnabled true
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -39,8 +41,8 @@ android {
         }
     }
     compileOptions {
-        sourceCompatibility = JavaVersion.VERSION_11
-        targetCompatibility = JavaVersion.VERSION_11
+        sourceCompatibility = JavaVersion.VERSION_1_8
+        targetCompatibility = JavaVersion.VERSION_1_8
     }
 
     sourceSets {
@@ -79,7 +81,10 @@ dependencies {
     annotationProcessor("com.github.bumptech.glide:compiler:4.16.0")
 
     // WorkManager 定时任务（用于保活）
-    implementation("androidx.work:work-runtime:2.9.0")
+    implementation("androidx.work:work-runtime:2.7.1")
+
+    // 添加 multidex 支持
+    implementation 'androidx.multidex:multidex:2.0.1'
 
     testImplementation(libs.junit)
     androidTestImplementation(libs.ext.junit)
